@@ -3,6 +3,7 @@
 
 import { ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
 import JSZip from "jszip";
+import { useRouter } from "next/navigation";
 import styles from "./page.module.css";
 
 type BlockType = "text" | "code" | "icon" | "image" | "divider" | "spacer";
@@ -70,6 +71,7 @@ type Block = TextBlock | CodeBlock | IconBlock | ImageBlock | DividerBlock | Spa
 type GeneratedItem = { code: string; blob: Blob; previewDataUrl: string; ext: "png" | "jpg" };
 
 const uid = () => Math.random().toString(36).slice(2, 8);
+const TAB_AUTH_KEY = "promo_studio_tab_auth";
 
 const makeDefaultBlocks = (): Block[] => [
   { id: uid(), type: "icon", visible: true, icon: "★", size: 38, align: "left", posX: 0, posY: 0, opacity: 100 },
@@ -93,6 +95,7 @@ const makeDefaultBlocks = (): Block[] => [
 ];
 
 export default function Home() {
+  const router = useRouter();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const offscreenRef = useRef<HTMLCanvasElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -140,6 +143,19 @@ export default function Home() {
   const [rightTab, setRightTab] = useState<"position" | "bulk">("position");
   const [openBlockId, setOpenBlockId] = useState<string | null>(null);
   const [imageTargetBlockId, setImageTargetBlockId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (sessionStorage.getItem(TAB_AUTH_KEY) !== "1") {
+      router.replace("/login");
+    }
+  }, [router]);
+
+  const onLogout = async () => {
+    sessionStorage.removeItem(TAB_AUTH_KEY);
+    await fetch("/api/logout", { method: "POST" });
+    router.replace("/login");
+    router.refresh();
+  };
 
   const buildCode = (num: number) => `${(prefix || "A").toUpperCase()}${separator}${String(num).padStart(5, "0")}`;
   const activeImage = useMemo(() => {
@@ -564,6 +580,9 @@ export default function Home() {
         </button>
         <button className={styles.btnPrimary} onClick={renderCanvas}>
           Preview
+        </button>
+        <button className={styles.btn} onClick={onLogout}>
+          Logout
         </button>
         <div className={styles.spacer} />
         <div className={styles.badge}>{loadedImage ? `${loadedImage.naturalWidth}x${loadedImage.naturalHeight}` : "No image"}</div>
